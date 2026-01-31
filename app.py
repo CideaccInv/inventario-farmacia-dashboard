@@ -38,33 +38,70 @@ def upload_section():
 
     with col1:
         st.markdown("### 📦 Inventario Base")
-        inicial = st.file_uploader("📘 Inventario Inicial", type=["xlsx", "xls"])
-        traslados = st.file_uploader("📤 Traslados (Salidas internas)", type=["xlsx", "xls"])
+        inicial = st.file_uploader(
+            "📘 Inventario Inicial",
+            type=["xlsx", "xls"],
+            key="inicial"
+        )
+        traslados = st.file_uploader(
+            "📤 Traslados (Salidas internas)",
+            type=["xlsx", "xls"],
+            key="traslados"
+        )
 
     with col2:
         st.markdown("### 🔄 Movimientos y Cierre")
-        recepciones = st.file_uploader("📥 Recepciones (Entradas)", type=["xlsx", "xls"])
-        final = st.file_uploader("📊 Inventario Final (Sistema)", type=["xlsx", "xls"])
+        recepciones = st.file_uploader(
+            "📥 Recepciones (Entradas)",
+            type=["xlsx", "xls"],
+            key="recepciones"
+        )
+        final = st.file_uploader(
+            "📊 Inventario Final (Sistema)",
+            type=["xlsx", "xls"],
+            key="final"
+        )
 
     st.markdown("---")
 
     st.markdown("### 🚚 Salidas de bodega")
-    hubo_salidas = st.checkbox("¿Hubo salidas de la bodega?")
+    hubo_salidas = st.checkbox(
+        "¿Hubo salidas de la bodega?",
+        key="hubo_salidas"
+    )
+
     salidas = None
     if hubo_salidas:
-        salidas = st.file_uploader("📦 Archivo de salidas de bodega", type=["xlsx", "xls"])
+        salidas = st.file_uploader(
+            "📦 Archivo de salidas de bodega",
+            type=["xlsx", "xls"],
+            key="salidas"
+        )
 
     st.markdown("---")
 
+    # ======================
+    # ESTADO DE CARGA (FIX)
+    # ======================
     st.markdown("### 🧾 Estado de carga")
+
     c1, c2, c3, c4, c5 = st.columns(5)
-    with c1: st.success("✔ Inicial") if inicial else st.warning("❌ Inicial")
-    with c2: st.success("✔ Traslados") if traslados else st.warning("❌ Traslados")
-    with c3: st.success("✔ Recepciones") if recepciones else st.warning("❌ Recepciones")
-    with c4: st.success("✔ Final") if final else st.warning("❌ Final")
+
+    with c1:
+        st.success("✔ Inicial") if inicial is not None else st.warning("❌ Inicial")
+
+    with c2:
+        st.success("✔ Traslados") if traslados is not None else st.warning("❌ Traslados")
+
+    with c3:
+        st.success("✔ Recepciones") if recepciones is not None else st.warning("❌ Recepciones")
+
+    with c4:
+        st.success("✔ Final") if final is not None else st.warning("❌ Final")
+
     with c5:
         if hubo_salidas:
-            st.success("✔ Salidas") if salidas else st.warning("❌ Salidas")
+            st.success("✔ Salidas") if salidas is not None else st.warning("❌ Salidas")
         else:
             st.info("➖ No aplica")
 
@@ -76,17 +113,22 @@ def upload_section():
 inicial_file, traslados_file, recepciones_file, salidas_file, final_file = upload_section()
 
 archivos_ok = all([
-    inicial_file,
-    traslados_file,
-    recepciones_file,
-    final_file
+    inicial_file is not None,
+    traslados_file is not None,
+    recepciones_file is not None,
+    final_file is not None
 ])
 
 # ======================
 # CONCILIAR (UNA VEZ)
 # ======================
 if archivos_ok and st.button("🔍 Reconstruir y Conciliar Inventario"):
-    salidas_df = load_excel(salidas_file, "salidas") if salidas_file else None
+
+    salidas_df = (
+        load_excel(salidas_file, "salidas")
+        if salidas_file is not None
+        else None
+    )
 
     st.session_state["df_conciliado"] = conciliar(
         load_excel(inicial_file, "inicial"),
@@ -104,6 +146,7 @@ if archivos_ok and st.button("🔍 Reconstruir y Conciliar Inventario"):
 if "df_conciliado" in st.session_state:
 
     df = st.session_state["df_conciliado"]
+
     inconsistencias_base = df[df["Diferencia"] != 0].copy()
 
     inconsistencias_base["Tipo_Inconsistencia"] = (
@@ -114,8 +157,10 @@ if "df_conciliado" in st.session_state:
     )
 
     col1, col2, col3 = st.columns(3)
-    with col1: st.metric("🚨 Inconsistencias", len(inconsistencias_base))
-    with col2: st.metric("📦 Registros", len(df))
+    with col1:
+        st.metric("🚨 Inconsistencias", len(inconsistencias_base))
+    with col2:
+        st.metric("📦 Registros", len(df))
     with col3:
         pct = round(len(inconsistencias_base) / len(df) * 100, 2)
         st.metric("📊 % con diferencia", f"{pct}%")
@@ -123,6 +168,7 @@ if "df_conciliado" in st.session_state:
     st.subheader("🚨 Inconsistencias detectadas")
 
     tipos = ["Todas"] + sorted(inconsistencias_base["Tipo_Inconsistencia"].unique())
+
     st.session_state["tipo_filtro"] = st.selectbox(
         "Filtrar por tipo de inconsistencia",
         tipos,
@@ -131,7 +177,8 @@ if "df_conciliado" in st.session_state:
 
     if st.session_state["tipo_filtro"] != "Todas":
         inconsistencias = inconsistencias_base[
-            inconsistencias_base["Tipo_Inconsistencia"] == st.session_state["tipo_filtro"]
+            inconsistencias_base["Tipo_Inconsistencia"]
+            == st.session_state["tipo_filtro"]
         ]
     else:
         inconsistencias = inconsistencias_base
