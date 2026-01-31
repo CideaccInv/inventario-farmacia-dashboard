@@ -86,27 +86,39 @@ def upload_section():
     st.markdown("### 🧾 Estado de carga")
 
     c1, c2, c3, c4, c5 = st.columns(5)
-
+    
     with c1:
-        st.success("✔ Inicial") if inicial is not None else st.warning("❌ Inicial")
-
+        if inicial is not None:
+            st.success("✔ Inicial")
+        else:
+            st.warning("❌ Inicial")
+    
     with c2:
-        st.success("✔ Traslados") if traslados is not None else st.warning("❌ Traslados")
-
+        if traslados is not None:
+            st.success("✔ Traslados")
+        else:
+            st.warning("❌ Traslados")
+    
     with c3:
-        st.success("✔ Recepciones") if recepciones is not None else st.warning("❌ Recepciones")
-
+        if recepciones is not None:
+            st.success("✔ Recepciones")
+        else:
+            st.warning("❌ Recepciones")
+    
     with c4:
-        st.success("✔ Final") if final is not None else st.warning("❌ Final")
-
+        if final is not None:
+            st.success("✔ Final")
+        else:
+            st.warning("❌ Final")
+    
     with c5:
         if hubo_salidas:
-            st.success("✔ Salidas") if salidas is not None else st.warning("❌ Salidas")
+            if salidas is not None:
+                st.success("✔ Salidas")
+            else:
+                st.warning("❌ Salidas")
         else:
             st.info("➖ No aplica")
-
-    return inicial, traslados, recepciones, salidas, final
-
 # ======================
 # EJECUCIÓN
 # ======================
@@ -198,3 +210,4 @@ if "df_conciliado" in st.session_state:
 
 else:
     st.info("📂 Cargue los 4 archivos y ejecute la conciliación")
+
