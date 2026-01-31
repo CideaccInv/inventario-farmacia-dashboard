@@ -119,6 +119,7 @@ def upload_section():
                 st.warning("❌ Salidas")
         else:
             st.info("➖ No aplica")
+    return inicial, traslados, recepciones, salidas, final
 # ======================
 # EJECUCIÓN
 # ======================
@@ -210,4 +211,5 @@ if "df_conciliado" in st.session_state:
 
 else:
     st.info("📂 Cargue los 4 archivos y ejecute la conciliación")
+
 
