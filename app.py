@@ -1,147 +1,227 @@
+import base64
 import streamlit as st
 from modules.loader import load_excel
 from modules.conciliacion import conciliar
 from modules.exporter import to_excel_download
 
-# ======================
-# CONFIGURACIÓN GENERAL
-# ======================
-st.set_page_config(
-    page_title="Conciliación de Inventarios",
-    layout="wide"
+
+def img_to_base64(path):
+    with open(path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
+    
+st.set_page_config(page_title="Conciliación de Inventarios", layout="wide")
+st.markdown("""
+    <style>
+    .column-title {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        font-weight: 600;
+        font-size: 1.6rem;
+        margin-bottom: 1rem;
+        width: 100%;
+    }
+
+    .column-subtitle {
+        text-align: center;
+        color: #6c757d;
+        font-size: 0.9rem;
+        margin-bottom: 0.75rem;
+    }
+
+    /* Tarjetas normales */
+    .card {
+        background-color: #ffffff;
+        border-radius: 14px;
+        padding: 1.2rem 1.4rem;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+        border-left: 6px solid #c1121f;
+    }
+
+    .card h4 {
+        margin: 0;
+        font-size: 0.95rem;
+        text-align: center;
+        color: #343a40;
+    }
+
+    .card .count {
+        font-size: 1.8rem;
+        text-align: center;
+        font-weight: 700;
+        margin-top: 0.3rem;
+    }
+
+    /* Tarjeta TOTAL (roja) */
+    .total-card {
+        background-color: #c1121f;
+        border-radius: 14px;
+        padding: 1.2rem 1.4rem;
+        box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+    }
+
+    .total-card h4 {
+        margin: 0;
+        font-size: 0.95rem;
+        text-align: center;
+        color: #ffffff;
+        opacity: 0.9;
+    }
+
+    .total-card .count {
+        font-size: 2.2rem;
+        text-align: center;
+        font-weight: 800;
+        margin-top: 0.3rem;
+        color: #ffffff;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+
+icono = img_to_base64("assets/inventario.png")
+
+st.markdown(
+    f"""
+    <style>
+    .header-box {{
+        background-color: #f8f9fa;
+        border-left: 6px solid #c1121f;
+        padding: 1.5rem 2rem;
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }}
+
+    .header-text h1 {{
+        margin: 0;
+    }}
+
+    .header-text p {{
+        margin: 0.2rem 0 0;
+        color: #6c757d;
+    }}
+
+    .header-icon img {{
+        width: 120px;
+        opacity: 0.9;
+        margin-right: 20px; 
+    }}
+    </style>
+
+    <div class="header-box">
+        <div class="header-text">
+            <h1>Conciliación de Inventario Farmacéutico</h1>
+            <p>Control de traslados, salidas y recepciones</p>
+        </div>
+        <div class="header-icon">
+            <img src="data:image/png;base64,{icono}">
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
 )
+
+st.markdown("---")
 
 # ======================
 # UI – SECCIÓN DE CARGA
 # ======================
+def uploader_con_estado(label, icon, key, obligatorio=True):
+    f_col, s_col = st.columns([4, 1], vertical_alignment="center")
+
+    with f_col:
+        archivo = st.file_uploader(
+            f"{icon} {label}",
+            type=["xlsx", "xls"],
+            key=key
+        )
+
+    with s_col:
+        if archivo:
+            st.markdown("✅")
+        else:
+            if obligatorio:
+                st.markdown("❌")
+            else:
+                st.markdown("➖")
+
+    return archivo
+
+
 def upload_section():
-    st.markdown(
-        """
-        <h1 style='text-align: center;'>📊 Dashboard de Conciliación de Inventarios</h1>
-        """,
-        unsafe_allow_html=True
-    )
-
-    st.markdown(
-        """
-        <p style="color:#6c757d; text-align:center;">
-        Cargue los <b>archivos obligatorios</b> para reconstruir y conciliar el inventario
-        por <b>código y lote</b>.
-        </p>
-        """,
-        unsafe_allow_html=True
-    )
-
-    st.markdown("---")
 
     col1, col2 = st.columns(2)
 
+    # ======================
+    # COLUMNA IZQUIERDA
+    # ======================
     with col1:
-        st.markdown("### 📦 Inventario Base")
-        inicial = st.file_uploader(
-            "📘 Inventario Inicial",
-            type=["xlsx", "xls"],
-            key="inicial"
-        )
-        traslados = st.file_uploader(
-            "📤 Traslados (Salidas internas)",
-            type=["xlsx", "xls"],
-            key="traslados"
+        st.markdown(
+            "<div class='column-title'>📦 Inventario inicial y final</div>",
+            unsafe_allow_html=True
         )
 
-    with col2:
-        st.markdown("### 🔄 Movimientos y Cierre")
-        recepciones = st.file_uploader(
-            "📥 Recepciones (Entradas)",
-            type=["xlsx", "xls"],
-            key="recepciones"
+        inicial = uploader_con_estado(
+            "Inventario Inicial", "📘", "inicial"
         )
-        final = st.file_uploader(
-            "📊 Inventario Final (Sistema)",
-            type=["xlsx", "xls"],
-            key="final"
+        final = uploader_con_estado(
+            "Inventario Final", "📕", "final"
+        )
+
+    # ======================
+    # COLUMNA DERECHA
+    # ======================
+    with col2:
+        st.markdown(
+            "<div class='column-title'>🔄 Recepciones y traslados</div>",
+            unsafe_allow_html=True
+        )
+
+        recepciones = uploader_con_estado(
+            "Recepciones (Entradas)", "📥", "recepciones"
+        )
+        traslados = uploader_con_estado(
+            "Traslados (Salidas internas)", "📤", "traslados"
         )
 
     st.markdown("---")
 
+    # ======================
+    # SALIDAS DE BODEGA
+    # ======================
     st.markdown("### 🚚 Salidas de bodega")
-    hubo_salidas = st.checkbox(
-        "¿Hubo salidas de la bodega?",
-        key="hubo_salidas"
-    )
+    hubo_salidas = st.checkbox("¿Hubo salidas de la bodega?", key="hubo_salidas")
 
     salidas = None
     if hubo_salidas:
-        salidas = st.file_uploader(
-            "📦 Archivo de salidas de bodega",
-            type=["xlsx", "xls"],
-            key="salidas"
+        salidas = uploader_con_estado(
+            "Salidas de bodega", "🚚", "salidas", obligatorio=False
         )
 
-    st.markdown("---")
-
-    # ======================
-    # ESTADO DE CARGA (FIX)
-    # ======================
-    st.markdown("### 🧾 Estado de carga")
-
-    c1, c2, c3, c4, c5 = st.columns(5)
-    
-    with c1:
-        if inicial is not None:
-            st.success("✔ Inicial")
-        else:
-            st.warning("❌ Inicial")
-    
-    with c2:
-        if traslados is not None:
-            st.success("✔ Traslados")
-        else:
-            st.warning("❌ Traslados")
-    
-    with c3:
-        if recepciones is not None:
-            st.success("✔ Recepciones")
-        else:
-            st.warning("❌ Recepciones")
-    
-    with c4:
-        if final is not None:
-            st.success("✔ Final")
-        else:
-            st.warning("❌ Final")
-    
-    with c5:
-        if hubo_salidas:
-            if salidas is not None:
-                st.success("✔ Salidas")
-            else:
-                st.warning("❌ Salidas")
-        else:
-            st.info("➖ No aplica")
     return inicial, traslados, recepciones, salidas, final
+
+
 # ======================
 # EJECUCIÓN
 # ======================
 inicial_file, traslados_file, recepciones_file, salidas_file, final_file = upload_section()
 
 archivos_ok = all([
-    inicial_file is not None,
-    traslados_file is not None,
-    recepciones_file is not None,
-    final_file is not None
+    inicial_file,
+    traslados_file,
+    recepciones_file,
+    final_file
 ])
 
 # ======================
 # CONCILIAR (UNA VEZ)
 # ======================
 if archivos_ok and st.button("🔍 Reconstruir y Conciliar Inventario"):
-
-    salidas_df = (
-        load_excel(salidas_file, "salidas")
-        if salidas_file is not None
-        else None
-    )
+    salidas_df = load_excel(salidas_file, "salidas") if salidas_file else None
 
     st.session_state["df_conciliado"] = conciliar(
         load_excel(inicial_file, "inicial"),
@@ -159,57 +239,63 @@ if archivos_ok and st.button("🔍 Reconstruir y Conciliar Inventario"):
 if "df_conciliado" in st.session_state:
 
     df = st.session_state["df_conciliado"]
-
     inconsistencias_base = df[df["Diferencia"] != 0].copy()
 
-    inconsistencias_base["Tipo_Inconsistencia"] = (
-        inconsistencias_base["Tipo_Inconsistencia"]
-        .fillna("Otra Inconsistencia")
-        .astype(str)
-        .str.strip()
+    resumen = (
+        inconsistencias_base
+        .groupby("Tipo_Inconsistencia")
+        .size()
+        .reset_index(name="Cantidad")
     )
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("🚨 Inconsistencias", len(inconsistencias_base))
-    with col2:
-        st.metric("📦 Registros", len(df))
-    with col3:
-        pct = round(len(inconsistencias_base) / len(df) * 100, 2)
-        st.metric("📊 % con diferencia", f"{pct}%")
+    total_inc = len(inconsistencias_base)
+    resumen["Porcentaje"] = (resumen["Cantidad"] / total_inc * 100).round(1)
 
-    st.subheader("🚨 Inconsistencias detectadas")
+    st.subheader("🚨 Distribución de inconsistencias")
 
-    tipos = ["Todas"] + sorted(inconsistencias_base["Tipo_Inconsistencia"].unique())
+    cols = st.columns(len(resumen) + 1)
 
-    st.session_state["tipo_filtro"] = st.selectbox(
-        "Filtrar por tipo de inconsistencia",
-        tipos,
-        index=tipos.index(st.session_state.get("tipo_filtro", "Todas"))
+    for col, row in zip(cols, resumen.itertuples()):
+        with col:
+            st.markdown(
+                f"""
+                <div class="card">
+                    <div class="count">{row.Cantidad} ({row.Porcentaje}%)</div>
+                    <h4>{row.Tipo_Inconsistencia}</h4>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+    with cols[-1]:
+        st.markdown(
+            f"""
+            <div class="total-card">
+                <div class="count">{total_inc}</div>
+                <h4>Total inconsistencias</h4>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    st.markdown("---")
+
+    tipos = ["Todas"] + resumen["Tipo_Inconsistencia"].tolist()
+    filtro = st.selectbox("Filtrar inconsistencias", tipos)
+
+    data = (
+        inconsistencias_base
+        if filtro == "Todas"
+        else inconsistencias_base[inconsistencias_base["Tipo_Inconsistencia"] == filtro]
     )
 
-    if st.session_state["tipo_filtro"] != "Todas":
-        inconsistencias = inconsistencias_base[
-            inconsistencias_base["Tipo_Inconsistencia"]
-            == st.session_state["tipo_filtro"]
-        ]
-    else:
-        inconsistencias = inconsistencias_base
-
-    st.dataframe(inconsistencias, use_container_width=True)
+    st.dataframe(data, use_container_width=True)
 
     st.download_button(
         "⬇️ Descargar inconsistencias",
-        data=to_excel_download(inconsistencias),
-        file_name="inconsistencias.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        data=to_excel_download(data),
+        file_name="inconsistencias.xlsx"
     )
 
-    if st.button("♻️ Reiniciar conciliación"):
-        st.session_state.clear()
-        st.experimental_rerun()
-
 else:
-    st.info("📂 Cargue los 4 archivos y ejecute la conciliación")
-
-
+    st.info("📂 Cargue los archivos y ejecute la conciliación")
